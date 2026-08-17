@@ -1,0 +1,120 @@
+openapi: 3.1.0
+info:
+  title: Fuel-Optimized Route API
+  version: 1.0.0
+paths:
+  /api/v1/routes/plan/:
+    post:
+      summary: Plan a contiguous-U.S. driving route and fuel purchases
+      operationId: createRoutePlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutePlanRequest'
+      responses:
+        '200':
+          description: Route and fuel plan
+          headers:
+            X-Route-Cache:
+              schema: {type: string, enum: [HIT, MISS]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutePlan'
+        '400': {$ref: '#/components/responses/Error'}
+        '422': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+        '504': {$ref: '#/components/responses/Error'}
+  /api/v1/health/:
+    get:
+      summary: Check database, station data, and provider configuration
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, stations_loaded, routing_configured]
+                properties:
+                  status: {type: string, const: ok}
+                  stations_loaded: {type: integer}
+                  routing_configured: {type: boolean}
+components:
+  responses:
+    Error:
+      description: Request or service error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code: {type: string}
+                  detail: {type: string}
+                  fields: {type: object}
+  schemas:
+    RoutePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [start, finish]
+      properties:
+        start: {type: string, minLength: 1, maxLength: 300}
+        finish: {type: string, minLength: 1, maxLength: 300}
+    Location:
+      type: object
+      required: [query, display_name, latitude, longitude, state, country_code]
+      properties:
+        query: {type: string}
+        display_name: {type: string}
+        latitude: {type: number}
+        longitude: {type: number}
+        state: {type: string}
+        country_code: {type: string, const: USA}
+    FuelStop:
+      type: object
+      required: [station_id, name, latitude, longitude, price_per_gallon, gallons_purchased, subtotal_usd]
+      properties:
+        station_id: {type: integer}
+        name: {type: string}
+        address: {type: string}
+        city: {type: string}
+        state: {type: string}
+        latitude: {type: number}
+        longitude: {type: number}
+        price_per_gallon: {type: string}
+        geocode_quality: {type: string, enum: [exact, city_centroid]}
+        route_mile: {type: number}
+        estimated_distance_from_route_miles: {type: number}
+        gallons_purchased: {type: number}
+        subtotal_usd: {type: number}
+    RoutePlan:
+      type: object
+      required: [start, finish, route, fuel, metadata]
+      properties:
+        start: {$ref: '#/components/schemas/Location'}
+        finish: {$ref: '#/components/schemas/Location'}
+        route:
+          type: object
+          properties:
+            distance_miles: {type: number}
+            duration_hours: {type: number}
+            bbox: {type: array, items: {type: number}}
+            geometry: {type: object}
+        fuel:
+          type: object
+          properties:
+            mpg: {type: number, const: 10}
+            maximum_range_miles: {type: number, const: 500}
+            planning_range_miles: {type: number, const: 480}
+            estimated_gallons_consumed: {type: number}
+            total_cost_usd: {type: number}
+            initial_fill: {$ref: '#/components/schemas/FuelStop'}
+            stops:
+              type: array
+              items: {$ref: '#/components/schemas/FuelStop'}
+        metadata: {type: object}

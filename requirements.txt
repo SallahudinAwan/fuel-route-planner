@@ -1,0 +1,6 @@
+Django==6.1
+djangorestframework==3.18.0
+pyproj==3.7.2
+python-dotenv==1.2.2
+requests==2.34.2
+shapely==2.1.2
